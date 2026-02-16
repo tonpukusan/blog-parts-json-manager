@@ -1,1 +1,6 @@
-{ "baseUrl":"https://tonpukusan.github.io/blog-parts/products/","files":[] }
+{
+  "baseUrl": "https://tonpukusan.github.io/blog-parts/products/",
+  "files": [
+    "shimano_24_twinpower_c2500sxg.json"
+  ]
+}
