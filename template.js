@@ -1,0 +1,1 @@
+export function buildEmbedTag(b,f){return `<div class='kattene-parts' data-json='${b+f}'></div>`;}

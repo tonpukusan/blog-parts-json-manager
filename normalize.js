@@ -1,0 +1,1 @@
+export function normalizeAmazonUrl(u){return u;}

@@ -1,0 +1,1 @@
+export async function copyText(t){await navigator.clipboard.writeText(t);}

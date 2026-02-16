@@ -1,0 +1,1 @@
+import './data_loader.js';console.log('app start');
