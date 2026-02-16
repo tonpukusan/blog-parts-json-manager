@@ -1,1 +1,4 @@
-export function buildEmbedTag(b,f){return `<div class='kattene-parts' data-json='${b+f}'></div>`;}
+export function buildEmbedTag(baseUrl, file) {
+  const jsonUrl = baseUrl + file;
+  return `<div class="kattene-parts" data-json="${jsonUrl}"></div>`;
+}
