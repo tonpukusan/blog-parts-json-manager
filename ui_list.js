@@ -20,7 +20,7 @@ function brandKeyFromTitle(title){
   return t.split(/\s+/)[0];
 }
 
-/** 各カードにブランドキーを付与し、ブランド一覧をstateにキャッシュ */
+/** stateにブランドキャッシュを作る */
 function ensureBrandCache(state){
   if (state._brandCacheReady) return;
 
@@ -30,10 +30,15 @@ function ensureBrandCache(state){
   });
 
   const keys = Array.from(new Set((state.cards || []).map(c => c.brandKey || "(none)")));
-  // 日本語でもそこそこ自然に並ぶように
   keys.sort((a,b) => String(a).localeCompare(String(b), "ja"));
   state.brandKeys = keys;
-  if (typeof state.brandSelected !== "string") state.brandSelected = ""; // "" = 全部
+
+  // 実行条件（ボタン押下で反映するので、draftとappliedを分ける）
+  if (typeof state.brandDraft !== "string") state.brandDraft = "";
+  if (typeof state.qDraft !== "string") state.qDraft = "";
+  if (typeof state.brandApplied !== "string") state.brandApplied = "";
+  if (typeof state.qApplied !== "string") state.qApplied = "";
+
   state._brandCacheReady = true;
 }
 
@@ -54,52 +59,66 @@ function line(label, value, copyAct, file){
 export function renderList(root, state) {
   ensureBrandCache(state);
 
-  const q = state.q || "";
-
   root.innerHTML = `
-    <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+    <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
       <select id="brand" style="padding:8px; max-width:220px;">
         <option value="">（ブランド：すべて）</option>
         ${(state.brandKeys || []).map(k =>
-          `<option value="${escAttr(k)}" ${state.brandSelected===k ? "selected" : ""}>${esc(k)}</option>`
+          `<option value="${escAttr(k)}" ${state.brandDraft===k ? "selected" : ""}>${esc(k)}</option>`
         ).join("")}
       </select>
 
       <input id="q"
              placeholder="検索（title / desc / URL / ファイル名）"
-             value="${escAttr(q)}"
-             style="flex:1; padding:8px;">
+             value="${escAttr(state.qDraft || "")}"
+             style="flex:1; min-width:240px; padding:8px;">
 
-      <a href="#/new">新規</a>
+      <button id="btnSearch" style="padding:8px 12px;">検索</button>
+      <button id="btnClear" style="padding:8px 12px;">クリア</button>
+
+      <a href="#/new" style="margin-left:auto;">新規</a>
     </div>
 
     <div style="color:#666; font-size:12px; margin-bottom:10px;" id="count"></div>
     <div id="list"></div>
   `;
 
-  // 変更イベント：ブランドはchange、検索はデバウンス
   const brandEl = root.querySelector("#brand");
   const qEl = root.querySelector("#q");
 
+  // 入力・選択は draft に入れるだけ（ここでは検索を走らせない）
   brandEl.addEventListener("change", (e) => {
-    state.brandSelected = e.target.value;
+    state.brandDraft = e.target.value;
+  });
+  qEl.addEventListener("input", (e) => {
+    state.qDraft = e.target.value;
+  });
+
+  // 検索ボタン押下でだけ反映
+  root.querySelector("#btnSearch").addEventListener("click", () => {
+    state.brandApplied = state.brandDraft || "";
+    state.qApplied = state.qDraft || "";
     applyFilterAndRender(root, state);
   });
 
-  let tmr = null;
-  qEl.addEventListener("input", (e) => {
-    state.q = e.target.value;
-    if (tmr) clearTimeout(tmr);
-    tmr = setTimeout(() => applyFilterAndRender(root, state), 180);
+  // クリア（条件を全消し → 全件表示）
+  root.querySelector("#btnClear").addEventListener("click", () => {
+    state.brandDraft = "";
+    state.qDraft = "";
+    state.brandApplied = "";
+    state.qApplied = "";
+    brandEl.value = "";
+    qEl.value = "";
+    applyFilterAndRender(root, state);
   });
 
-  // 初回描画
+  // 初回描画：Applied条件で描画（初期は全件）
   applyFilterAndRender(root, state);
 }
 
 function applyFilterAndRender(root, state){
-  const q = (state.q || "").toLowerCase();
-  const brand = state.brandSelected || "";
+  const q = (state.qApplied || "").toLowerCase();
+  const brand = state.brandApplied || "";
 
   const cards = state.cards || [];
   const filtered = cards.filter(x => {
@@ -118,8 +137,8 @@ function applyFilterAndRender(root, state){
     return t.toLowerCase().includes(q);
   });
 
-  const countEl = root.querySelector("#count");
-  countEl.textContent = `件数：${filtered.length} / ${cards.length}`;
+  root.querySelector("#count").textContent =
+    `件数：${filtered.length} / ${cards.length}（適用中：ブランド=${brand || "すべて"} / 検索=${state.qApplied ? "あり" : "なし"}）`;
 
   const listEl = root.querySelector("#list");
   listEl.innerHTML = filtered.map(x => cardHtml(x)).join("");
@@ -129,11 +148,9 @@ function applyFilterAndRender(root, state){
     btn.addEventListener("click", async () => {
       const act = btn.dataset.act;
       const file = btn.dataset.file;
-
       const item = cards.find(c => c && c.file === file);
       if (!item) return;
 
-      // 画面遷移
       if (act === "edit") {
         location.hash = `#/edit?file=${encodeURIComponent(file)}`;
         return;
@@ -161,7 +178,6 @@ function cardHtml(x) {
     ? `<div style="color:#b00020;font-size:11px; margin-top:6px;">取得失敗: ${esc(x.data._error)}</div>`
     : "";
 
-  // 画像URLが変な文字を含んでも壊れにくいよう img タグに寄せる
   return `
     <div style="padding:10px; border:1px solid #eee; border-radius:8px; margin-bottom:10px;">
       <div style="display:flex; gap:12px; align-items:center;">
