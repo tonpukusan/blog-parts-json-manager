@@ -35,6 +35,16 @@ function route() {
 async function boot() {
   state.manifest = await loadManifest("manifest.json");
   state.cards = await loadAllCards(state.manifest);
+  // brandKey を前計算（最初の空白まで）
+  state.cards.forEach(c => {
+    const t = (c.data?.title || "").trim();
+    c.brandKey = t ? t.split(/\s+/)[0] : "(none)";
+  });
+
+  // ブランド一覧（プルダウン用）
+  state.brandKeys = Array.from(new Set(state.cards.map(c => c.brandKey))).sort((a,b)=>a.localeCompare(b,"ja"));
+  state.brandSelected = ""; // 空 = 全部
+
   window.addEventListener("hashchange", route);
   route();
 }
