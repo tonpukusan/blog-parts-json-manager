@@ -1,7 +1,7 @@
 import { buildEmbedTag } from "./template.js";
 import { copyText } from "./clipboard.js";
 
-/** HTMLエスケープ */
+/** HTML escape */
 function esc(s){
   return String(s ?? "").replace(/[&<>"']/g, (m) => ({
     "&": "&amp;",
@@ -13,14 +13,14 @@ function esc(s){
 }
 function escAttr(s){ return esc(s).replace(/`/g,"&#96;"); }
 
-/** タイトルの最初の空白まで（メーカー/ブランドっぽい先頭語） */
+/** Title prefix until first whitespace */
 function brandKeyFromTitle(title){
   const t = String(title ?? "").trim();
   if (!t) return "(none)";
   return t.split(/\s+/)[0];
 }
 
-/** stateにブランドキャッシュを作る */
+/** Cache brand keys on state */
 function ensureBrandCache(state){
   if (state._brandCacheReady) return;
 
@@ -33,7 +33,7 @@ function ensureBrandCache(state){
   keys.sort((a,b) => String(a).localeCompare(String(b), "ja"));
   state.brandKeys = keys;
 
-  // 実行条件（ボタン押下で反映するので、draftとappliedを分ける）
+  // Draft vs Applied (search runs only on button click)
   if (typeof state.brandDraft !== "string") state.brandDraft = "";
   if (typeof state.qDraft !== "string") state.qDraft = "";
   if (typeof state.brandApplied !== "string") state.brandApplied = "";
@@ -86,7 +86,7 @@ export function renderList(root, state) {
   const brandEl = root.querySelector("#brand");
   const qEl = root.querySelector("#q");
 
-  // 入力・選択は draft に入れるだけ（ここでは検索を走らせない）
+  // Update draft only
   brandEl.addEventListener("change", (e) => {
     state.brandDraft = e.target.value;
   });
@@ -94,14 +94,14 @@ export function renderList(root, state) {
     state.qDraft = e.target.value;
   });
 
-  // 検索ボタン押下でだけ反映
+  // Search executes only on click
   root.querySelector("#btnSearch").addEventListener("click", () => {
     state.brandApplied = state.brandDraft || "";
     state.qApplied = state.qDraft || "";
     applyFilterAndRender(root, state);
   });
 
-  // クリア（条件を全消し → 全件表示）
+  // Clear
   root.querySelector("#btnClear").addEventListener("click", () => {
     state.brandDraft = "";
     state.qDraft = "";
@@ -112,7 +112,7 @@ export function renderList(root, state) {
     applyFilterAndRender(root, state);
   });
 
-  // 初回描画：Applied条件で描画（初期は全件）
+  // Initial render (Applied conditions)
   applyFilterAndRender(root, state);
 }
 
@@ -143,7 +143,7 @@ function applyFilterAndRender(root, state){
   const listEl = root.querySelector("#list");
   listEl.innerHTML = filtered.map(x => cardHtml(x)).join("");
 
-  // ボタン配線
+  // Wire buttons
   listEl.querySelectorAll("[data-act]").forEach(btn => {
     btn.addEventListener("click", async () => {
       const act = btn.dataset.act;

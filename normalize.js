@@ -4,10 +4,10 @@ export function normalizeAmazonUrl(url) {
   try {
     const u = new URL(url);
 
-    // Amazonドメイン以外は触らない
+    // Only touch Amazon domains
     if (!u.hostname.includes("amazon.")) return url;
 
-    // dp または gp/product の場合だけASIN抽出
+    // Shorten only if ASIN exists in dp/ or gp/product/
     const m =
       u.pathname.match(/\/dp\/([A-Z0-9]{10})/i) ||
       u.pathname.match(/\/gp\/product\/([A-Z0-9]{10})/i);
@@ -17,9 +17,8 @@ export function normalizeAmazonUrl(url) {
       return `${u.protocol}//${u.hostname}/dp/${asin}/`;
     }
 
-    // ASINを含まないURL（検索など）はそのまま返す
+    // Search URLs like /s?k=... must be preserved
     return url;
-
   } catch {
     return url;
   }
@@ -29,7 +28,8 @@ export function normalizeUrlLite(url) {
   if (!url) return url;
   try {
     const u = new URL(url);
-    ["ref","utm_source","utm_medium","utm_campaign","utm_term","utm_content"].forEach(k => u.searchParams.delete(k));
+    // Remove common UTM parameters only (avoid breaking search urls)
+    ["utm_source","utm_medium","utm_campaign","utm_term","utm_content"].forEach(k => u.searchParams.delete(k));
     return u.toString();
   } catch {
     return url;
