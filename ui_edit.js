@@ -3,6 +3,8 @@ import { normalizeAmazonUrl, normalizeUrlLite } from "./normalize.js";
 import { buildEmbedTag } from "./template.js";
 import { copyText } from "./clipboard.js";
 
+import { isSupported as fsSupported, saveJsonToProducts } from "./fs_access.js";
+
 export function renderEdit(root, state, file) {
   const item = state.cards.find(x => x.file === file);
   if (!item) {
@@ -28,8 +30,8 @@ export function renderNew(root, state) {
 
   const defaultFile = "new_item.json";
   root.innerHTML = buildFormHtml(defaultFile, data, [
-    "※ ファイル名を入力してから JSON をダウンロードしてください",
-    "※ 保存後、manifest.json に追記してください"
+    "※ ファイル名を入力して保存/ダウンロードしてください",
+    "※ ローカル保存を使う場合は、画面上部で保存先フォルダを設定してください"
   ], true);
 
   wire(root, state, defaultFile, data, true);
@@ -53,12 +55,7 @@ function wire(root, state, file, data, isNew) {
   });
 
   root.querySelector("#btnCopyTag").addEventListener("click", async () => {
-    let fname = file;
-    const fnEl = root.querySelector("#filename");
-    if (fnEl) {
-      fname = (fnEl.value || "").trim() || file;
-      if (!fname.endsWith(".json")) fname += ".json";
-    }
+    const fname = currentFilename(root, file);
     const tag = buildEmbedTag(state.manifest.baseUrl, fname);
     const ok = await copyText(tag);
     flash(root.querySelector("#btnCopyTag"), ok ? "コピー済" : "失敗");
@@ -71,22 +68,59 @@ function wire(root, state, file, data, isNew) {
       alert("エラーがあります：\n- " + errs.join("\n- "));
       return;
     }
-
-    let fname = file;
-    const fnEl = root.querySelector("#filename");
-    if (fnEl) {
-      fname = (fnEl.value || "").trim() || file;
-      if (!fname.endsWith(".json")) fname += ".json";
-    }
-
+    const fname = currentFilename(root, file);
     downloadJson(fname, data);
   });
+
+  // 追加：PCへ保存（productsへ）
+  const btnSaveLocal = root.querySelector("#btnSaveLocal");
+  if (btnSaveLocal) {
+    btnSaveLocal.addEventListener("click", async () => {
+      if (!fsSupported()) {
+        alert("このブラウザはローカル保存に未対応です（Chrome/Edge推奨）");
+        return;
+      }
+
+      readForm(form, data);
+      const errs = validateKattene(data);
+      if (errs.length) {
+        alert("エラーがあります：\n- " + errs.join("\n- "));
+        return;
+      }
+
+      const fname = currentFilename(root, file);
+
+      try {
+        btnSaveLocal.disabled = true;
+        btnSaveLocal.textContent = "保存中…";
+        const saved = await saveJsonToProducts(fname, data);
+        btnSaveLocal.textContent = "保存しました";
+        setTimeout(() => (btnSaveLocal.textContent = "PCへ保存（products）"), 900);
+        alert(`保存しました：${saved}\n\n次に generate_manifest.py を実行して manifest.json を更新してください。`);
+      } catch (e) {
+        alert("保存に失敗: " + (e?.message || e));
+        btnSaveLocal.textContent = "PCへ保存（products）";
+      } finally {
+        btnSaveLocal.disabled = false;
+      }
+    });
+  }
 
   root.querySelector("#btnBack").addEventListener("click", () => {
     location.hash = "#/";
   });
 
   updateErrors(root, data);
+}
+
+function currentFilename(root, fallbackFile) {
+  let fname = fallbackFile;
+  const fnEl = root.querySelector("#filename");
+  if (fnEl) {
+    fname = (fnEl.value || "").trim() || fallbackFile;
+  }
+  if (!fname.endsWith(".json")) fname += ".json";
+  return fname;
 }
 
 function buildFormHtml(file, data, notes = [], isNew = false) {
@@ -159,8 +193,17 @@ function buildFormHtml(file, data, notes = [], isNew = false) {
       <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
         <button type="button" id="btnNormalize">URL正規化</button>
         <button type="button" id="btnCopyTag">埋め込みタグをコピー</button>
+
         <button type="button" id="btnDownload">JSONをダウンロード</button>
+
+        <!-- 追加：ローカル保存 -->
+        <button type="button" id="btnSaveLocal">PCへ保存（products）</button>
+
         <button type="button" id="btnBack">戻る</button>
+      </div>
+
+      <div style="color:#666; font-size:12px; margin-top:8px;">
+        ※「PCへ保存」を使うには、画面上部で保存先フォルダを設定してください（初回のみ）
       </div>
 
       <div id="errors" style="margin-top:10px;"></div>
@@ -196,7 +239,7 @@ function updateErrors(root, data) {
 }
 
 function downloadJson(file, data) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" });
+  const blob = new Blob([JSON.stringify(data, null, 2) + "\n"], { type: "application/json;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = file;

@@ -2,18 +2,23 @@ import { loadManifest, loadCardsProgressive } from "./data_loader.js";
 import { renderList } from "./ui_list.js";
 import { renderEdit, renderNew } from "./ui_edit.js";
 
+import {
+  isSupported as fsSupported,
+  getProductsDirHandle,
+  pickProductsDir,
+  clearProductsDirSetting
+} from "./fs_access.js";
+
 const state = {
   manifest: null,
   cards: [],
-  q: "",
-
-  // Progressive load status (optional)
   loading: false,
   loaded: 0,
   total: 0
 };
 
 const appEl = document.getElementById("app");
+const fsBarEl = document.getElementById("fsbar");
 
 function route() {
   const hash = location.hash || "#/";
@@ -43,37 +48,74 @@ function isListRoute() {
   return path === "/" || path === "";
 }
 
+async function renderFsBar() {
+  if (!fsBarEl) return;
+
+  if (!fsSupported()) {
+    fsBarEl.innerHTML = `
+      <div style="color:#666;">
+        ローカル保存：このブラウザは未対応です（Chrome/Edge推奨）
+      </div>
+    `;
+    return;
+  }
+
+  const handle = await getProductsDirHandle();
+  const status = handle ? "設定済み" : "未設定";
+
+  fsBarEl.innerHTML = `
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <div>ローカル保存（products）：<b>${status}</b></div>
+      <button id="btnPickDir" style="padding:6px 10px;">保存先フォルダを設定</button>
+      <button id="btnClearDir" style="padding:6px 10px;">設定解除</button>
+      <div style="color:#666;">※初回だけ C:\\Repo\\blog-parts\\products を選択</div>
+    </div>
+  `;
+
+  fsBarEl.querySelector("#btnPickDir").addEventListener("click", async () => {
+    try {
+      await pickProductsDir();
+      await renderFsBar();
+      alert("保存先フォルダを設定しました。以後は新規/編集画面の「PCへ保存」が使えます。");
+    } catch (e) {
+      alert("フォルダ設定に失敗: " + (e?.message || e));
+    }
+  });
+
+  fsBarEl.querySelector("#btnClearDir").addEventListener("click", async () => {
+    await clearProductsDirSetting();
+    await renderFsBar();
+  });
+}
+
 async function boot() {
   state.loading = true;
 
-  // ルーティングは先に有効化（manifest取得中でも「新規」等に移動できる）
   window.addEventListener("hashchange", route);
 
-  // まずUIを出す（0件でも表示できるように）
+  // 先にUIを出す
   route();
+  await renderFsBar();
 
+  // manifest → progressive load
   state.manifest = await loadManifest("manifest.json");
   state.total = (state.manifest.files || []).length;
 
-  // 取得できた分から追加していく
   await loadCardsProgressive(
     state.manifest,
     (batch) => {
       state.cards.push(...batch);
       state.loaded = state.cards.length;
 
-      // ui_list.js が brand cache を持つ場合に備えてリセット
+      // ui_list がキャッシュ持つ場合に備えて
       state._brandCacheReady = false;
 
-      // 一覧画面を見ている時だけ再描画（編集画面を邪魔しない）
       if (isListRoute()) route();
     },
     { concurrency: 6, batchSize: 20 }
   );
 
   state.loading = false;
-
-  // 最終状態を反映（一覧にいる場合）
   if (isListRoute()) route();
 }
 
