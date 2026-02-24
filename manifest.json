@@ -455,5 +455,11 @@
     "zipbaits_zbl_minnow111ftaidalreborn.json",
     "zipbaits_zbl_raphael.json",
     "zipbaits_zbl_systemminnow7f.json"
+  ],
+    "previewCss": [
+    "https://raw.githubusercontent.com/tonpukusan/blog-parts/main/common.css"
+  ],
+  "previewJs": [
+    "https://raw.githubusercontent.com/tonpukusan/blog-parts/main/common.js"
   ]
 }

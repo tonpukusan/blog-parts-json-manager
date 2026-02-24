@@ -1,1 +1,231 @@
-body{font-family:sans-serif;}
+:root{
+  --gap: 10px;
+  --border: #ddd;
+  --muted: #666;
+}
+
+body{
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  margin: 16px;
+}
+
+h1,h2,h3{ margin: 0 0 10px; }
+
+button, input, select, textarea{
+  font-size: 14px;
+}
+
+button{
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+button:hover{ background: #f7f7f7; }
+button:disabled{ opacity: .6; cursor: not-allowed; }
+
+a{ color: inherit; }
+
+hr{ border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+.small{ font-size: 12px; color: var(--muted); }
+
+/* ===== List ===== */
+.list-toolbar{
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.list-toolbar .q{
+  width: 260px;   /* ← 大きすぎ問題をここで解決（必要なら 220px 等へ） */
+  max-width: 60vw;
+}
+
+.pill{
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.card{
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin: 10px 0;
+}
+
+.card-head{
+  display:flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.card-title{ font-weight: 700; }
+.card-file{ font-size: 12px; color: var(--muted); }
+
+.card-actions{
+  display:flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 0;
+}
+
+.kv{
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  gap: 8px;
+  align-items: start;
+  margin-top: 8px;
+}
+.kv pre{
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fafafa;
+  min-height: 20px;
+}
+
+.loading-box{
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  margin: 10px 0;
+  background: #fcfcfc;
+}
+
+/* ===== Edit ===== */
+.edit-top{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.edit-top .left{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.form-grid{
+  display: grid;
+  gap: 10px;
+}
+
+.row-compact{
+  display: grid;
+  grid-template-columns: 1fr 120px 90px; /* title / btnStyle / imgWidth */
+  gap: 10px;
+  align-items: center;
+}
+
+.row-1col input, .row-1col textarea{
+  width: min(900px, 100%);
+}
+
+.row-compact input[name="title"]{
+  width: 60%; /* ← 「今の6割くらい」 */
+  min-width: 280px;
+  max-width: 900px;
+}
+.row-compact select[name="btnStyle"]{ width: 120px; }
+.row-compact input[name="imgWidth"]{ width: 90px; }
+
+textarea[name="desc"]{
+  height: 4.5em; /* だいたい3行 */
+}
+
+.primary-actions{
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.primary-actions button{
+  padding: 10px 14px; /* ← ボタン大きめ */
+  font-size: 15px;
+}
+
+.preview-wrap{
+  margin-top: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+}
+.preview-title{
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* 簡易 kattene 風プレビュー */
+.preview-card{
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.preview-card img{
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fafafa;
+}
+.preview-card .ptitle{ font-weight: 700; margin: 0 0 6px; }
+.preview-card .pdesc{ margin: 0 0 10px; color: #333; white-space: pre-wrap; }
+.preview-card .pbtns{ display:flex; gap: 8px; flex-wrap: wrap; }
+.preview-card .pbtns a{
+  display:inline-block;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  background: #f8f8f8;
+  font-size: 13px;
+}
+/* ===== List thumbnail ===== */
+.card-body{
+  display: grid;
+  grid-template-columns: 56px 1fr; /* サムネ / 本文 */
+  gap: 12px;
+  align-items: start;
+  margin-top: 10px;
+}
+
+.thumb{
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fafafa;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.thumb img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display:block;
+}
+
+.thumb .noimg{
+  font-size: 11px;
+  color: var(--muted);
+}
