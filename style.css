@@ -197,3 +197,35 @@ textarea[name="desc"]{
   background: #f8f8f8;
   font-size: 13px;
 }
+/* ===== List thumbnail ===== */
+.card-body{
+  display: grid;
+  grid-template-columns: 72px 1fr; /* サムネ / 本文 */
+  gap: 12px;
+  align-items: start;
+  margin-top: 10px;
+}
+
+.thumb{
+  width: 72px;
+  height: 72px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fafafa;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.thumb img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display:block;
+}
+
+.thumb .noimg{
+  font-size: 11px;
+  color: var(--muted);
+}

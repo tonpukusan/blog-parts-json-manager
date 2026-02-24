@@ -187,6 +187,11 @@ function cardHtml(state, x) {
     ? `<div class="small">取得失敗: ${esc(x.data._error)}</div>`
     : "";
 
+  const imgUrl = (x.data?.imgUrl || "").trim();
+  const thumb = imgUrl
+    ? `<div class="thumb"><img src="${esc(imgUrl)}" alt=""></div>`
+    : `<div class="thumb"><div class="noimg">no image</div></div>`;
+
   return `
     <div class="card">
       <div class="card-head">
@@ -200,11 +205,15 @@ function cardHtml(state, x) {
         </div>
       </div>
 
-      ${kvLine("aUrl", x.data?.aUrl, "copy-aurl", x.file)}
-      ${kvLine("yUrl", x.data?.yUrl, "copy-yurl", x.file)}
-      ${kvLine("rUrl", x.data?.rUrl, "copy-rurl", x.file)}
-
-      ${err}
+      <div class="card-body">
+        ${thumb}
+        <div>
+          ${kvLine("aUrl", x.data?.aUrl, "copy-aurl", x.file)}
+          ${kvLine("yUrl", x.data?.yUrl, "copy-yurl", x.file)}
+          ${kvLine("rUrl", x.data?.rUrl, "copy-rurl", x.file)}
+          ${err}
+        </div>
+      </div>
     </div>
   `;
 }
