@@ -41,7 +41,7 @@ function wire(root, state, file, data) {
   const refresh = () => {
     readForm(form, data);
     updateErrors(root, data);
-    updatePreviewSimple(root, data); // ← 確実に出る簡易版
+    updatePreviewWithCommon(root, data); // ← 確実に出る簡易版
   };
 
   form.addEventListener("input", refresh);
@@ -53,7 +53,7 @@ function wire(root, state, file, data) {
     data.rUrl = normalizeUrlLite(data.rUrl);
     writeForm(form, data);
     updateErrors(root, data);
-    updatePreviewSimple(root, data);
+    updatePreviewWithCommon(root, data);
   });
 
   root.querySelector("#btnCopyTag").addEventListener("click", async () => {
@@ -111,7 +111,7 @@ function wire(root, state, file, data) {
   // initial
   writeForm(form, data);
   updateErrors(root, data);
-  updatePreviewSimple(root, data);
+  updatePreviewWithCommon(root, data);
 }
 
 function currentFilename(root, fallbackFile) {
@@ -240,46 +240,67 @@ function updateErrors(root, data) {
     : "OK";
 }
 
-/**
- * まず「確実に表示できる」簡易プレビュー。
- * common.js連携版は、基盤が直ってから差し替え推奨。
- */
-function updatePreviewSimple(root, data) {
+function updatePreviewWithCommon(root, data) {
   const frame = root.querySelector("#previewFrame");
   if (!frame) return;
 
-  const title = escapeHtml(data.title || "");
-  const desc  = escapeHtml(data.desc || "");
-  const imgUrl = escapeAttr((data.imgUrl || "").trim());
+  const cssUrls = root._previewCssUrls || [];
+  const jsUrls  = root._previewJsUrls  || [];
 
-  const a = escapeAttr((data.aUrl || "").trim());
-  const y = escapeAttr((data.yUrl || "").trim());
-  const r = escapeAttr((data.rUrl || "").trim());
+  // common.js が読む JSON（スキーマ通り）
+  const previewJson = {
+    title: String(data.title || ""),
+    imgUrl: String(data.imgUrl || ""),
+    imgWidth: Number(data.imgWidth || 200),
+    aUrl: String(data.aUrl || ""),
+    yUrl: String(data.yUrl || ""),
+    rUrl: String(data.rUrl || ""),
+    btnStyle: String(data.btnStyle || "__three"),
+    desc: String(data.desc || "")
+  };
 
-  const html = `<!doctype html><html><head><meta charset="utf-8">
+  const cssLinks = cssUrls
+    .map(u => `<link rel="stylesheet" href="${escapeAttr(u)}">`)
+    .join("");
+
+  // ★重要：script は “defer” で入れる（DOM構築後に走らせる）
+  const jsLinks = jsUrls
+    .map(u => `<script src="${escapeAttr(u)}" defer></script>`)
+    .join("");
+
+  const html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+${cssLinks}
 <style>
-  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:12px;}
-  .box{border:1px solid #ddd;border-radius:10px;padding:10px;display:grid;grid-template-columns:140px 1fr;gap:12px}
-  img{width:100%;height:auto;border-radius:8px;border:1px solid #eee;background:#fafafa}
-  .t{font-weight:700;margin:0 0 6px}
-  .d{white-space:pre-wrap;margin:0 0 10px}
-  .btns{display:flex;gap:8px;flex-wrap:wrap}
-  .btns a{display:inline-block;padding:8px 10px;border:1px solid #ddd;border-radius:8px;text-decoration:none;background:#f8f8f8;font-size:13px}
-</style></head><body>
-<div class="box">
-  <div>${imgUrl ? `<img src="${imgUrl}" alt="">` : ``}</div>
-  <div>
-    <div class="t">${title || "(titleなし)"}</div>
-    <div class="d">${desc || ""}</div>
-    <div class="btns">
-      ${a ? `<a href="${a}" target="_blank" rel="noopener">Amazon</a>` : ``}
-      ${y ? `<a href="${y}" target="_blank" rel="noopener">Yahoo</a>` : ``}
-      ${r ? `<a href="${r}" target="_blank" rel="noopener">楽天</a>` : ``}
-    </div>
-  </div>
-</div>
-</body></html>`;
+  body{ margin:12px; }
+</style>
+</head>
+<body>
+
+<!-- ブログと同じ埋め込みタグ構造 -->
+<div class="kattene-parts" data-json="__preview__"></div>
+
+<script>
+  // preview JSON を iframe 内に保持
+  window.__PREVIEW_JSON__ = ${JSON.stringify(previewJson).replace(/</g, "\\u003c")};
+
+  // __preview__ だけをフックして JSON を返す
+  const _fetch = window.fetch.bind(window);
+  window.fetch = async function(url, opts){
+    if(url === "__preview__"){
+      return { ok:true, status:200, json: async () => window.__PREVIEW_JSON__ };
+    }
+    return _fetch(url, opts);
+  };
+</script>
+
+${jsLinks}
+
+</body>
+</html>`;
 
   const doc = frame.contentDocument;
   doc.open();
