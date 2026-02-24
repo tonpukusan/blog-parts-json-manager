@@ -32,7 +32,8 @@ export function renderNew(root, state) {
 
 function wire(root, state, file, data, isNew) {
   const form = root.querySelector("form");
-
+  root._previewCssUrls = state.manifest.previewCss || [];
+  root._previewJsUrls  = state.manifest.previewJs  || [];
   const refresh = () => {
     readForm(form, data);
     updateErrors(root, data);
@@ -241,29 +242,83 @@ function updateErrors(root, data) {
 }
 
 function updatePreview(root, data){
-  const el = root.querySelector("#preview");
-  if (!el) return;
+  const frame = root.querySelector("#previewFrame");
+  if (!frame) return;
+
+  const cssUrls = root._previewCssUrls || [];
+  const jsUrls  = root._previewJsUrls  || [];
 
   const title = escapeHtml(data.title || "");
-  const desc = escapeHtml(data.desc || "");
-  const imgUrl = escapeAttr(data.imgUrl || "");
-  const btns = buildPreviewButtons(data);
+  const desc  = escapeHtml(data.desc || "");
+  const imgUrl = escapeAttr((data.imgUrl || "").trim());
+  const aUrl = escapeAttr((data.aUrl || "").trim());
+  const yUrl = escapeAttr((data.yUrl || "").trim());
+  const rUrl = escapeAttr((data.rUrl || "").trim());
+  const btnStyle = escapeAttr(data.btnStyle || "__three");
+  const imgWidth = Number(data.imgWidth || 200);
 
-  el.innerHTML = `
-    <div class="preview-card">
-      <div>
-        ${imgUrl ? `<img src="${imgUrl}" alt="">` : `<div class="small">imgUrlなし</div>`}
-      </div>
-      <div>
-        <div class="ptitle">${title || "(titleなし)"}</div>
-        <div class="pdesc">${desc || ""}</div>
-        <div class="pbtns">${btns}</div>
-        <div class="small" style="margin-top:8px;">
-          imgWidth=${escapeHtml(String(data.imgWidth ?? 200))}, btnStyle=${escapeHtml(String(data.btnStyle || "__three"))}
-        </div>
-      </div>
-    </div>
-  `;
+  // JSONを経由せず、common.js が読む形のダミーJSONをiframe内で作る
+  const inlineJson = {
+    title, imgUrl, imgWidth,
+    aUrl, yUrl, rUrl,
+    btnStyle, desc
+  };
+
+  const cssLinks = cssUrls
+    .map(u => `<link rel="stylesheet" href="${u}">`)
+    .join("");
+
+  const jsLinks = jsUrls
+    .map(u => `<script src="${u}"></script>`)
+    .join("");
+
+  const html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+${cssLinks}
+</head>
+<body>
+
+<!-- iframe内に一時JSONを用意 -->
+<script>
+window.__PREVIEW_JSON__ = ${JSON.stringify(inlineJson)};
+</script>
+
+<!-- common.js が読む形式に寄せる -->
+<div class="kattene-parts" data-preview="1"></div>
+
+<script>
+/*
+ common.js は data-json を fetch する設計なので、
+ プレビュー時だけ fetch をフックして
+ window.__PREVIEW_JSON__ を返す
+*/
+const _fetch = window.fetch;
+window.fetch = async function(url){
+  if(url === "__preview__"){
+    return {
+      json: async () => window.__PREVIEW_JSON__
+    };
+  }
+  return _fetch(url);
+};
+
+// data-json を差し込む
+document.querySelector(".kattene-parts")
+  .setAttribute("data-json","__preview__");
+</script>
+
+${jsLinks}
+
+</body>
+</html>`;
+
+  const doc = frame.contentDocument;
+  doc.open();
+  doc.write(html);
+  doc.close();
 }
 
 function buildPreviewButtons(data){
