@@ -1,3 +1,4 @@
+// ui_edit.js (FULL REPLACE)
 import { validateKattene } from "./validate.js";
 import { normalizeAmazonUrl, normalizeUrlLite } from "./normalize.js";
 import { buildEmbedTag } from "./template.js";
@@ -12,7 +13,7 @@ export function renderEdit(root, state, file) {
   }
   const data = structuredClone(item.data || {});
   root.innerHTML = buildFormHtml(file, data, [], false);
-  wire(root, state, file, data, false);
+  wire(root, state, file, data);
 }
 
 export function renderNew(root, state) {
@@ -27,17 +28,20 @@ export function renderNew(root, state) {
     ],
     true
   );
-  wire(root, state, defaultFile, data, true);
+  wire(root, state, defaultFile, data);
 }
 
-function wire(root, state, file, data, isNew) {
+function wire(root, state, file, data) {
   const form = root.querySelector("form");
-  root._previewCssUrls = state.manifest.previewCss || [];
-  root._previewJsUrls  = state.manifest.previewJs  || [];
+
+  // preview assets (optional)
+  root._previewCssUrls = state.manifest?.previewCss || [];
+  root._previewJsUrls  = state.manifest?.previewJs  || [];
+
   const refresh = () => {
     readForm(form, data);
     updateErrors(root, data);
-    updatePreview(root, data);
+    updatePreviewSimple(root, data); // ← 確実に出る簡易版
   };
 
   form.addEventListener("input", refresh);
@@ -49,7 +53,7 @@ function wire(root, state, file, data, isNew) {
     data.rUrl = normalizeUrlLite(data.rUrl);
     writeForm(form, data);
     updateErrors(root, data);
-    updatePreview(root, data);
+    updatePreviewSimple(root, data);
   });
 
   root.querySelector("#btnCopyTag").addEventListener("click", async () => {
@@ -70,7 +74,6 @@ function wire(root, state, file, data, isNew) {
     downloadJson(fname, data);
   });
 
-  // PCへ保存（productsへ）
   const btnSaveLocal = root.querySelector("#btnSaveLocal");
   if (btnSaveLocal) {
     btnSaveLocal.addEventListener("click", async () => {
@@ -91,7 +94,7 @@ function wire(root, state, file, data, isNew) {
         const saved = await saveJsonToProducts(fname, data);
         btnSaveLocal.textContent = "保存しました";
         setTimeout(() => (btnSaveLocal.textContent = "PCへ保存（products）"), 900);
-        alert(`保存しました：${saved}\n\n次に generate_manifest.py を実行して manifest.json を更新してください。`);
+        alert(`保存しました：${saved}\n\n次に update_manifest.ps1 を実行して manifest.json を更新してください。`);
       } catch (e) {
         alert("保存に失敗: " + (e?.message || e));
         btnSaveLocal.textContent = "PCへ保存（products）";
@@ -105,10 +108,10 @@ function wire(root, state, file, data, isNew) {
     location.hash = "#/";
   });
 
-  // 初回
+  // initial
   writeForm(form, data);
   updateErrors(root, data);
-  updatePreview(root, data);
+  updatePreviewSimple(root, data);
 }
 
 function currentFilename(root, fallbackFile) {
@@ -203,13 +206,9 @@ function buildFormHtml(file, data, notes = [], isNew = false) {
       <button type="button" id="btnSaveLocal">PCへ保存（products）</button>
     </div>
 
-    <div class="small" style="margin-top:8px;">
-      ※「PCへ保存」を使うには、画面上部で保存先フォルダを設定してください（初回のみ）
-    </div>
-
     <div class="preview-wrap">
-      <div class="preview-title">プレビュー（概ね実寸）</div>
-      <div id="preview"></div>
+      <div class="preview-title">プレビュー</div>
+      <iframe id="previewFrame" style="width:100%; height:260px; border:0;"></iframe>
     </div>
   `;
 }
@@ -241,101 +240,51 @@ function updateErrors(root, data) {
     : "OK";
 }
 
-function updatePreview(root, data){
+/**
+ * まず「確実に表示できる」簡易プレビュー。
+ * common.js連携版は、基盤が直ってから差し替え推奨。
+ */
+function updatePreviewSimple(root, data) {
   const frame = root.querySelector("#previewFrame");
   if (!frame) return;
-
-  const cssUrls = root._previewCssUrls || [];
-  const jsUrls  = root._previewJsUrls  || [];
 
   const title = escapeHtml(data.title || "");
   const desc  = escapeHtml(data.desc || "");
   const imgUrl = escapeAttr((data.imgUrl || "").trim());
-  const aUrl = escapeAttr((data.aUrl || "").trim());
-  const yUrl = escapeAttr((data.yUrl || "").trim());
-  const rUrl = escapeAttr((data.rUrl || "").trim());
-  const btnStyle = escapeAttr(data.btnStyle || "__three");
-  const imgWidth = Number(data.imgWidth || 200);
 
-  // JSONを経由せず、common.js が読む形のダミーJSONをiframe内で作る
-  const inlineJson = {
-    title, imgUrl, imgWidth,
-    aUrl, yUrl, rUrl,
-    btnStyle, desc
-  };
+  const a = escapeAttr((data.aUrl || "").trim());
+  const y = escapeAttr((data.yUrl || "").trim());
+  const r = escapeAttr((data.rUrl || "").trim());
 
-  const cssLinks = cssUrls
-    .map(u => `<link rel="stylesheet" href="${u}">`)
-    .join("");
-
-  const jsLinks = jsUrls
-    .map(u => `<script src="${u}"></script>`)
-    .join("");
-
-  const html = `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
+  const html = `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-${cssLinks}
-</head>
-<body>
-
-<!-- iframe内に一時JSONを用意 -->
-<script>
-window.__PREVIEW_JSON__ = ${JSON.stringify(inlineJson)};
-</script>
-
-<!-- common.js が読む形式に寄せる -->
-<div class="kattene-parts" data-preview="1"></div>
-
-<script>
-/*
- common.js は data-json を fetch する設計なので、
- プレビュー時だけ fetch をフックして
- window.__PREVIEW_JSON__ を返す
-*/
-const _fetch = window.fetch;
-window.fetch = async function(url){
-  if(url === "__preview__"){
-    return {
-      json: async () => window.__PREVIEW_JSON__
-    };
-  }
-  return _fetch(url);
-};
-
-// data-json を差し込む
-document.querySelector(".kattene-parts")
-  .setAttribute("data-json","__preview__");
-</script>
-
-${jsLinks}
-
-</body>
-</html>`;
+<style>
+  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:12px;}
+  .box{border:1px solid #ddd;border-radius:10px;padding:10px;display:grid;grid-template-columns:140px 1fr;gap:12px}
+  img{width:100%;height:auto;border-radius:8px;border:1px solid #eee;background:#fafafa}
+  .t{font-weight:700;margin:0 0 6px}
+  .d{white-space:pre-wrap;margin:0 0 10px}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  .btns a{display:inline-block;padding:8px 10px;border:1px solid #ddd;border-radius:8px;text-decoration:none;background:#f8f8f8;font-size:13px}
+</style></head><body>
+<div class="box">
+  <div>${imgUrl ? `<img src="${imgUrl}" alt="">` : ``}</div>
+  <div>
+    <div class="t">${title || "(titleなし)"}</div>
+    <div class="d">${desc || ""}</div>
+    <div class="btns">
+      ${a ? `<a href="${a}" target="_blank" rel="noopener">Amazon</a>` : ``}
+      ${y ? `<a href="${y}" target="_blank" rel="noopener">Yahoo</a>` : ``}
+      ${r ? `<a href="${r}" target="_blank" rel="noopener">楽天</a>` : ``}
+    </div>
+  </div>
+</div>
+</body></html>`;
 
   const doc = frame.contentDocument;
   doc.open();
   doc.write(html);
   doc.close();
-}
-
-function buildPreviewButtons(data){
-  // 本家のbtnStyle完全再現はしない（編集用の簡易プレビュー）
-  const a = (data.aUrl || "").trim();
-  const y = (data.yUrl || "").trim();
-  const r = (data.rUrl || "").trim();
-
-  const mk = (label, url) => url
-    ? `<a href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`
-    : `<a href="javascript:void(0)" aria-disabled="true" style="opacity:.5;pointer-events:none;">${escapeHtml(label)}</a>`;
-
-  return [
-    mk("Amazon", a),
-    mk("Yahoo", y),
-    mk("楽天", r),
-  ].join("");
 }
 
 function downloadJson(file, data) {
