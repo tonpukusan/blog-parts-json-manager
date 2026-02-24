@@ -2,13 +2,12 @@ import { validateKattene } from "./validate.js";
 import { normalizeAmazonUrl, normalizeUrlLite } from "./normalize.js";
 import { buildEmbedTag } from "./template.js";
 import { copyText } from "./clipboard.js";
-
 import { isSupported as fsSupported, saveJsonToProducts } from "./fs_access.js";
 
 export function renderEdit(root, state, file) {
   const item = state.cards.find(x => x.file === file);
   if (!item) {
-    root.innerHTML = `<p style="color:#b00020">対象が見つかりません</p>`;
+    root.innerHTML = `<div>対象が見つかりません</div>`;
     return;
   }
   const data = structuredClone(item.data || {});
@@ -17,33 +16,30 @@ export function renderEdit(root, state, file) {
 }
 
 export function renderNew(root, state) {
-  const data = {
-    title: "",
-    imgUrl: "",
-    imgWidth: 200,
-    aUrl: "",
-    yUrl: "",
-    rUrl: "",
-    btnStyle: "__three",
-    desc: ""
-  };
-
+  const data = { title: "", imgUrl: "", imgWidth: 200, aUrl: "", yUrl: "", rUrl: "", btnStyle: "__three", desc: "" };
   const defaultFile = "new_item.json";
-  root.innerHTML = buildFormHtml(defaultFile, data, [
-    "※ ファイル名を入力して保存/ダウンロードしてください",
-    "※ ローカル保存を使う場合は、画面上部で保存先フォルダを設定してください"
-  ], true);
-
+  root.innerHTML = buildFormHtml(
+    defaultFile,
+    data,
+    [
+      "※ ファイル名を入力して保存/ダウンロードしてください",
+      "※ ローカル保存を使う場合は、画面上部で保存先フォルダを設定してください"
+    ],
+    true
+  );
   wire(root, state, defaultFile, data, true);
 }
 
 function wire(root, state, file, data, isNew) {
   const form = root.querySelector("form");
 
-  form.addEventListener("input", () => {
+  const refresh = () => {
     readForm(form, data);
     updateErrors(root, data);
-  });
+    updatePreview(root, data);
+  };
+
+  form.addEventListener("input", refresh);
 
   root.querySelector("#btnNormalize").addEventListener("click", () => {
     readForm(form, data);
@@ -52,6 +48,7 @@ function wire(root, state, file, data, isNew) {
     data.rUrl = normalizeUrlLite(data.rUrl);
     writeForm(form, data);
     updateErrors(root, data);
+    updatePreview(root, data);
   });
 
   root.querySelector("#btnCopyTag").addEventListener("click", async () => {
@@ -72,7 +69,7 @@ function wire(root, state, file, data, isNew) {
     downloadJson(fname, data);
   });
 
-  // 追加：PCへ保存（productsへ）
+  // PCへ保存（productsへ）
   const btnSaveLocal = root.querySelector("#btnSaveLocal");
   if (btnSaveLocal) {
     btnSaveLocal.addEventListener("click", async () => {
@@ -80,16 +77,13 @@ function wire(root, state, file, data, isNew) {
         alert("このブラウザはローカル保存に未対応です（Chrome/Edge推奨）");
         return;
       }
-
       readForm(form, data);
       const errs = validateKattene(data);
       if (errs.length) {
         alert("エラーがあります：\n- " + errs.join("\n- "));
         return;
       }
-
       const fname = currentFilename(root, file);
-
       try {
         btnSaveLocal.disabled = true;
         btnSaveLocal.textContent = "保存中…";
@@ -110,104 +104,112 @@ function wire(root, state, file, data, isNew) {
     location.hash = "#/";
   });
 
+  // 初回
+  writeForm(form, data);
   updateErrors(root, data);
+  updatePreview(root, data);
 }
 
 function currentFilename(root, fallbackFile) {
   let fname = fallbackFile;
   const fnEl = root.querySelector("#filename");
-  if (fnEl) {
-    fname = (fnEl.value || "").trim() || fallbackFile;
-  }
+  if (fnEl) fname = (fnEl.value || "").trim() || fallbackFile;
   if (!fname.endsWith(".json")) fname += ".json";
   return fname;
 }
 
 function buildFormHtml(file, data, notes = [], isNew = false) {
   const noteHtml = notes.length
-    ? `<p style="color:#666;font-size:12px;">${notes.map(escapeHtml).join("<br>")}</p>`
+    ? `<div class="small">${notes.map(escapeHtml).join("<br>")}</div>`
     : "";
 
-  const headerLeft = isNew ? `
-    <div style="flex:1;">
-      <label style="display:block; font-size:12px; color:#666;">ファイル名（.json）</label>
-      <input id="filename" value="${escapeAttr(file)}" style="width:100%;padding:8px;">
-    </div>
-  ` : `<h2 style="margin:0;">${escapeHtml(file)}</h2>`;
+  const headerLeft = isNew
+    ? `
+      <div class="left">
+        <label class="small">ファイル名（.json）</label>
+        <input id="filename" value="${escapeAttr(file)}" placeholder="example.json" />
+      </div>
+    `
+    : `
+      <div class="left">
+        <h2>${escapeHtml(file)}</h2>
+      </div>
+    `;
 
   return `
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px;">
+    <div class="edit-top">
       ${headerLeft}
-      <a href="#/">一覧へ</a>
+      <div>
+        <button type="button" id="btnBack">一覧へ戻る</button>
+      </div>
     </div>
 
     ${noteHtml}
+    <div id="errors" class="small"></div>
 
-    <form>
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px;">
+    <form class="form-grid">
+      <div class="row-compact">
         <div>
-          <label>title</label>
-          <input name="title" value="${escapeAttr(data.title || "")}" style="width:100%;padding:8px;">
+          <label class="small">title</label><br>
+          <input name="title" value="${escapeAttr(data.title || "")}" />
         </div>
 
         <div>
-          <label>btnStyle</label>
-          <select name="btnStyle" style="width:100%;padding:8px;">
-            ${["__one","__two","__three","__four","__five"]
-              .map(v => `<option value="${v}" ${data.btnStyle === v ? "selected" : ""}>${v}</option>`)
-              .join("")}
+          <label class="small">btnStyle</label><br>
+          <select name="btnStyle">
+            ${["__one","__two","__three","__four","__five"].map(v =>
+              `<option value="${v}" ${data.btnStyle===v ? "selected":""}>${v}</option>`
+            ).join("")}
           </select>
         </div>
 
         <div>
-          <label>imgUrl</label>
-          <input name="imgUrl" value="${escapeAttr(data.imgUrl || "")}" style="width:100%;padding:8px;">
-        </div>
-
-        <div>
-          <label>imgWidth</label>
-          <input name="imgWidth" type="number" value="${escapeAttr(data.imgWidth ?? 200)}" style="width:100%;padding:8px;">
-        </div>
-
-        <div>
-          <label>aUrl（Amazon）</label>
-          <input name="aUrl" value="${escapeAttr(data.aUrl || "")}" style="width:100%;padding:8px;">
-        </div>
-
-        <div>
-          <label>yUrl（Yahoo）</label>
-          <input name="yUrl" value="${escapeAttr(data.yUrl || "")}" style="width:100%;padding:8px;">
-        </div>
-
-        <div>
-          <label>rUrl（楽天）</label>
-          <input name="rUrl" value="${escapeAttr(data.rUrl || "")}" style="width:100%;padding:8px;">
-        </div>
-
-        <div>
-          <label>desc</label>
-          <textarea name="desc" rows="4" style="width:100%;padding:8px;">${escapeHtml(data.desc || "")}</textarea>
+          <label class="small">imgWidth</label><br>
+          <input name="imgWidth" inputmode="numeric" value="${escapeAttr(data.imgWidth ?? 200)}" />
         </div>
       </div>
 
-      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
-        <button type="button" id="btnNormalize">URL正規化</button>
-        <button type="button" id="btnCopyTag">埋め込みタグをコピー</button>
-
-        <button type="button" id="btnDownload">JSONをダウンロード</button>
-
-        <!-- 追加：ローカル保存 -->
-        <button type="button" id="btnSaveLocal">PCへ保存（products）</button>
-
-        <button type="button" id="btnBack">戻る</button>
+      <div class="row-1col">
+        <label class="small">imgUrl</label><br>
+        <input name="imgUrl" value="${escapeAttr(data.imgUrl || "")}" />
       </div>
 
-      <div style="color:#666; font-size:12px; margin-top:8px;">
-        ※「PCへ保存」を使うには、画面上部で保存先フォルダを設定してください（初回のみ）
+      <div class="row-1col">
+        <label class="small">aUrl（Amazon）</label><br>
+        <input name="aUrl" value="${escapeAttr(data.aUrl || "")}" />
       </div>
 
-      <div id="errors" style="margin-top:10px;"></div>
+      <div class="row-1col">
+        <label class="small">yUrl（Yahoo）</label><br>
+        <input name="yUrl" value="${escapeAttr(data.yUrl || "")}" />
+      </div>
+
+      <div class="row-1col">
+        <label class="small">rUrl（楽天）</label><br>
+        <input name="rUrl" value="${escapeAttr(data.rUrl || "")}" />
+      </div>
+
+      <div class="row-1col">
+        <label class="small">desc</label><br>
+        <textarea name="desc">${escapeHtml(data.desc || "")}</textarea>
+      </div>
     </form>
+
+    <div class="primary-actions">
+      <button type="button" id="btnNormalize">URL正規化</button>
+      <button type="button" id="btnCopyTag">埋め込みタグをコピー</button>
+      <button type="button" id="btnDownload">JSONをダウンロード</button>
+      <button type="button" id="btnSaveLocal">PCへ保存（products）</button>
+    </div>
+
+    <div class="small" style="margin-top:8px;">
+      ※「PCへ保存」を使うには、画面上部で保存先フォルダを設定してください（初回のみ）
+    </div>
+
+    <div class="preview-wrap">
+      <div class="preview-title">プレビュー（概ね実寸）</div>
+      <div id="preview"></div>
+    </div>
   `;
 }
 
@@ -234,8 +236,51 @@ function updateErrors(root, data) {
   const errs = validateKattene(data);
   const el = root.querySelector("#errors");
   el.innerHTML = errs.length
-    ? `<div style="color:#b00020;font-size:12px;">` + errs.map(e => `- ${escapeHtml(e)}`).join("<br>") + `</div>`
-    : `<div style="color:#666;font-size:12px;">OK</div>`;
+    ? "エラー：<br>" + errs.map(e => `- ${escapeHtml(e)}`).join("<br>")
+    : "OK";
+}
+
+function updatePreview(root, data){
+  const el = root.querySelector("#preview");
+  if (!el) return;
+
+  const title = escapeHtml(data.title || "");
+  const desc = escapeHtml(data.desc || "");
+  const imgUrl = escapeAttr(data.imgUrl || "");
+  const btns = buildPreviewButtons(data);
+
+  el.innerHTML = `
+    <div class="preview-card">
+      <div>
+        ${imgUrl ? `<img src="${imgUrl}" alt="">` : `<div class="small">imgUrlなし</div>`}
+      </div>
+      <div>
+        <div class="ptitle">${title || "(titleなし)"}</div>
+        <div class="pdesc">${desc || ""}</div>
+        <div class="pbtns">${btns}</div>
+        <div class="small" style="margin-top:8px;">
+          imgWidth=${escapeHtml(String(data.imgWidth ?? 200))}, btnStyle=${escapeHtml(String(data.btnStyle || "__three"))}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function buildPreviewButtons(data){
+  // 本家のbtnStyle完全再現はしない（編集用の簡易プレビュー）
+  const a = (data.aUrl || "").trim();
+  const y = (data.yUrl || "").trim();
+  const r = (data.rUrl || "").trim();
+
+  const mk = (label, url) => url
+    ? `<a href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`
+    : `<a href="javascript:void(0)" aria-disabled="true" style="opacity:.5;pointer-events:none;">${escapeHtml(label)}</a>`;
+
+  return [
+    mk("Amazon", a),
+    mk("Yahoo", y),
+    mk("楽天", r),
+  ].join("");
 }
 
 function downloadJson(file, data) {
@@ -259,7 +304,9 @@ function escapeHtml(s) {
     "<": "&lt;",
     ">": "&gt;",
     "\"": "&quot;",
-    "'": "&#39;"
+    "'": "&#39;",
   }[m]));
 }
-function escapeAttr(s) { return escapeHtml(s).replace(/`/g, "&#96;"); }
+function escapeAttr(s) {
+  return escapeHtml(s).replace(/`/g, "&#96;");
+}
