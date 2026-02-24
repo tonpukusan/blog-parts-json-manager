@@ -206,7 +206,7 @@ function buildFormHtml(file, data, notes = [], isNew = false) {
       <button type="button" id="btnSaveLocal">PCへ保存（products）</button>
     </div>
 
-    <div class="preview-wrap">
+    <div class="preview-wrap" style="width: calc(66% - 346px);">
       <div class="preview-title">プレビュー</div>
       <iframe id="previewFrame" style="width:100%; height:260px; border:0;"></iframe>
     </div>
