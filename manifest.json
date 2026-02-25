@@ -99,6 +99,7 @@
     "duo_bayfuf_manicfish77.json",
     "duo_bayruf_manicfish88.json",
     "dyzd_repairbuckle.json",
+    "eclipse_balor65.json",
     "ecogear_ajimust.json",
     "ecogear_ajimust_softsansun.json",
     "ecogear_jyukuseiaqua_katsuaji_komushi_2inch_bigsize.json",
@@ -110,6 +111,7 @@
     "evergreen_e.g.spooledge_guard.json",
     "evergreen_ironmarvie40.json",
     "evergreen_marvie50.json",
+    "fimo_pliers_ver2.json",
     "fishing_fighters_tetsuwan_super_sus_quick_clip_swibel_28s.json",
     "five_woods_business_tote_jetsetter.json",
     "fmate_works_reelstand_43mm_aluminum_5.4g.json",
@@ -455,11 +457,5 @@
     "zipbaits_zbl_minnow111ftaidalreborn.json",
     "zipbaits_zbl_raphael.json",
     "zipbaits_zbl_systemminnow7f.json"
-  ],
-    "previewCss": [
-    "https://tonpukusan.github.io/blog-parts/common.css"
-  ],
-  "previewJs": [
-    "https://tonpukusan.github.io/blog-parts/common.js"
   ]
 }
