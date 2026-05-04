@@ -247,8 +247,6 @@ function updatePreviewWithCommon(root, data) {
   const cssUrls = root._previewCssUrls || [];
   const jsUrls  = root._previewJsUrls  || [];
 
-  const jsLinks = `<script src="../common.js"></script>`;
-
   // common.js が読む JSON（スキーマ通り）
   const previewJson = {
     title: String(data.title || ""),
@@ -266,10 +264,7 @@ function updatePreviewWithCommon(root, data) {
     .join("");
 
   // ★重要：script は “defer” で入れる（DOM構築後に走らせる）
-  const jsLinks = jsUrls
-    .map(u => `<script src="${escapeAttr(u)}" defer></script>`)
-    .join("");
-
+  const jsLinks = `<script src="../common.js"></script>`;
   const html = `<!doctype html>
 <html>
 <head>
