@@ -259,11 +259,7 @@ function updatePreviewWithCommon(root, data) {
     desc: String(data.desc || "")
   };
 
-  const cssLinks = cssUrls
-    .map(u => `<link rel="stylesheet" href="${escapeAttr(u)}">`)
-    .join("");
-
-  // ★重要：script は “defer” で入れる（DOM構築後に走らせる）
+  const cssLinks = `<link rel="stylesheet" href="https://tonpukusan.github.io/blog-parts/style.css">`;
   const jsLinks = `<script src="https://tonpukusan.github.io/blog-parts/common.js"></script>`;
   const html = `<!doctype html>
 <html>
