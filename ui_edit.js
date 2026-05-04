@@ -140,6 +140,7 @@ function updatePreviewWithCommon(root, data) {
   const el = root.querySelector("#previewArea");
   if (!el) return;
 
+  console.log(data);
   const amazonUrl = generateAmazonAffiliateLink(data.aUrl, "yusatosh-22");
   const rakutenUrl = data.rUrl
     ? generateRakutenAffiliateUrl(data.rUrl)
