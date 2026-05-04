@@ -264,7 +264,7 @@ function updatePreviewWithCommon(root, data) {
     .join("");
 
   // ★重要：script は “defer” で入れる（DOM構築後に走らせる）
-  const jsLinks = `<script src="../common.js"></script>`;
+  const jsLinks = `<script src="https://tonpukusan.github.io/common.js"></script>`;
   const html = `<!doctype html>
 <html>
 <head>
