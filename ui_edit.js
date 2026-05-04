@@ -247,6 +247,8 @@ function updatePreviewWithCommon(root, data) {
   const cssUrls = root._previewCssUrls || [];
   const jsUrls  = root._previewJsUrls  || [];
 
+  const jsLinks = `<script src="../common.js"></script>`;
+
   // common.js が読む JSON（スキーマ通り）
   const previewJson = {
     title: String(data.title || ""),
