@@ -290,12 +290,18 @@ ${cssLinks}
   // __preview__ だけをフックして JSON を返す
   const _fetch = window.fetch.bind(window);
   window.fetch = async function(url, opts){
-    if(url === "__preview__"){
-      return { ok:true, status:200, json: async () => window.__PREVIEW_JSON__ };
+    if (url === "__preview__") {
+      return new Response(
+        JSON.stringify(window.__PREVIEW_JSON__),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        }
+      );
     }
     return _fetch(url, opts);
   };
-</script>
+  </script>
 
 ${jsLinks}
 
