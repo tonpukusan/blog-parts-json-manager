@@ -133,7 +133,7 @@ function wire(root, state, file, data) {
   // 初期描画
   writeForm(form, data);
   updateErrors(root, data);
-  updatePreview(root, data);
+  updatePreviewWithCommon(root, data);
 }
 
 function updatePreviewWithCommon(root, data) {
