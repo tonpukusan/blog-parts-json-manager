@@ -230,3 +230,7 @@ textarea[name="desc"]{
   color: var(--muted);
 }
 
+#previewArea {
+  max-width: 700px;
+  margin: 0 auto;
+}
