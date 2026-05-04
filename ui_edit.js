@@ -1,9 +1,16 @@
-// ui_edit.js (FULL REPLACE)
+// ui_edit.js (DIV preview version)
 import { validateKattene } from "./validate.js";
 import { normalizeAmazonUrl, normalizeUrlLite } from "./normalize.js";
 import { buildEmbedTag } from "./template.js";
 import { copyText } from "./clipboard.js";
 import { isSupported as fsSupported, saveJsonToProducts } from "./fs_access.js";
+
+// ★ 追加（common.jsから）
+import {
+  insKattene,
+  generateAmazonAffiliateLink,
+  generateRakutenAffiliateUrl
+} from "./common.js";
 
 export function renderEdit(root, state, file) {
   const item = state.cards.find(x => x.file === file);
@@ -17,8 +24,18 @@ export function renderEdit(root, state, file) {
 }
 
 export function renderNew(root, state) {
-  const data = { title: "", imgUrl: "", imgWidth: 200, aUrl: "", yUrl: "", rUrl: "", btnStyle: "__three", desc: "" };
+  const data = {
+    title: "",
+    imgUrl: "",
+    imgWidth: 200,
+    aUrl: "",
+    yUrl: "",
+    rUrl: "",
+    btnStyle: "__three",
+    desc: ""
+  };
   const defaultFile = "new_item.json";
+
   root.innerHTML = buildFormHtml(
     defaultFile,
     data,
@@ -28,20 +45,17 @@ export function renderNew(root, state) {
     ],
     true
   );
+
   wire(root, state, defaultFile, data);
 }
 
 function wire(root, state, file, data) {
   const form = root.querySelector("form");
 
-  // preview assets (optional)
-  root._previewCssUrls = state.manifest?.previewCss || [];
-  root._previewJsUrls  = state.manifest?.previewJs  || [];
-
   const refresh = () => {
     readForm(form, data);
     updateErrors(root, data);
-    updatePreviewWithCommon(root, data); // ← 確実に出る簡易版
+    updatePreview(root, data);
   };
 
   form.addEventListener("input", refresh);
@@ -53,7 +67,7 @@ function wire(root, state, file, data) {
     data.rUrl = normalizeUrlLite(data.rUrl);
     writeForm(form, data);
     updateErrors(root, data);
-    updatePreviewWithCommon(root, data);
+    updatePreview(root, data);
   });
 
   root.querySelector("#btnCopyTag").addEventListener("click", async () => {
@@ -81,20 +95,28 @@ function wire(root, state, file, data) {
         alert("このブラウザはローカル保存に未対応です（Chrome/Edge推奨）");
         return;
       }
+
       readForm(form, data);
       const errs = validateKattene(data);
       if (errs.length) {
         alert("エラーがあります：\n- " + errs.join("\n- "));
         return;
       }
+
       const fname = currentFilename(root, file);
+
       try {
         btnSaveLocal.disabled = true;
         btnSaveLocal.textContent = "保存中…";
+
         const saved = await saveJsonToProducts(fname, data);
+
         btnSaveLocal.textContent = "保存しました";
-        setTimeout(() => (btnSaveLocal.textContent = "PCへ保存（products）"), 900);
-        alert(`保存しました：${saved}\n\n次に update_manifest.ps1 を実行して manifest.json を更新してください。`);
+        setTimeout(() => {
+          btnSaveLocal.textContent = "PCへ保存（products）";
+        }, 900);
+
+        alert(`保存しました：${saved}\n\n次に update_manifest.ps1 を実行してください。`);
       } catch (e) {
         alert("保存に失敗: " + (e?.message || e));
         btnSaveLocal.textContent = "PCへ保存（products）";
@@ -108,10 +130,29 @@ function wire(root, state, file, data) {
     location.hash = "#/";
   });
 
-  // initial
+  // 初期描画
   writeForm(form, data);
   updateErrors(root, data);
-  updatePreviewWithCommon(root, data);
+  updatePreview(root, data);
+}
+
+function updatePreview(root, data) {
+  const el = root.querySelector("#preview");
+  if (!el) return;
+
+  const amazonUrl = generateAmazonAffiliateLink(data.aUrl, "yusatosh-22");
+  const rakutenUrl = data.rUrl ? generateRakutenAffiliateUrl(data.rUrl) : "";
+
+  el.innerHTML = insKattene(
+    data.title || "",
+    data.imgUrl || "",
+    data.imgWidth || 200,
+    amazonUrl || "",
+    data.yUrl || "",
+    rakutenUrl || "",
+    data.btnStyle || "__three",
+    data.desc || ""
+  );
 }
 
 function currentFilename(root, fallbackFile) {
@@ -131,7 +172,7 @@ function buildFormHtml(file, data, notes = [], isNew = false) {
     ? `
       <div class="left">
         <label class="small">ファイル名（.json）</label>
-        <input id="filename" value="${escapeAttr(file)}" placeholder="example.json" />
+        <input id="filename" value="${escapeAttr(file)}" />
       </div>
     `
     : `
@@ -169,7 +210,7 @@ function buildFormHtml(file, data, notes = [], isNew = false) {
 
         <div>
           <label class="small">imgWidth</label><br>
-          <input name="imgWidth" inputmode="numeric" value="${escapeAttr(data.imgWidth ?? 200)}" />
+          <input name="imgWidth" value="${escapeAttr(data.imgWidth ?? 200)}" />
         </div>
       </div>
 
@@ -206,9 +247,9 @@ function buildFormHtml(file, data, notes = [], isNew = false) {
       <button type="button" id="btnSaveLocal">PCへ保存（products）</button>
     </div>
 
-    <div class="preview-wrap" style="width: calc(66% - 346px);">
+    <div class="preview-wrap">
       <div class="preview-title">プレビュー</div>
-      <iframe id="previewFrame" style="width:100%; height:260px; border:0;"></iframe>
+      <div id="preview"></div>
     </div>
   `;
 }
@@ -240,75 +281,11 @@ function updateErrors(root, data) {
     : "OK";
 }
 
-function updatePreviewWithCommon(root, data) {
-  const frame = root.querySelector("#previewFrame");
-  if (!frame) return;
-
-  const cssUrls = root._previewCssUrls || [];
-  const jsUrls  = root._previewJsUrls  || [];
-
-  // common.js が読む JSON（スキーマ通り）
-  const previewJson = {
-    title: String(data.title || ""),
-    imgUrl: String(data.imgUrl || ""),
-    imgWidth: Number(data.imgWidth || 200),
-    aUrl: String(data.aUrl || ""),
-    yUrl: String(data.yUrl || ""),
-    rUrl: String(data.rUrl || ""),
-    btnStyle: String(data.btnStyle || "__three"),
-    desc: String(data.desc || "")
-  };
-
-  const cssLinks = `<link rel="stylesheet" href="https://tonpukusan.github.io/blog-parts/style.css">`;
-  const jsLinks = `<script src="https://tonpukusan.github.io/blog-parts/common.js"></script>`;
-  const html = `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-${cssLinks}
-<style>
-  body{ margin:12px; }
-</style>
-</head>
-<body>
-
-<!-- ブログと同じ埋め込みタグ構造 -->
-<div class="kattene-parts" data-json="__preview__"></div>
-
-<script>
-  // preview JSON を iframe 内に保持
-  window.__PREVIEW_JSON__ = ${JSON.stringify(previewJson).replace(/</g, "\\u003c")};
-
-  // __preview__ だけをフックして JSON を返す
-  const _fetch = window.fetch.bind(window);
-  window.fetch = async function(url, opts){
-    if (url === "__preview__") {
-      return new Response(
-        JSON.stringify(window.__PREVIEW_JSON__),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" }
-        }
-      );
-    }
-    return _fetch(url, opts);
-  };
-  </script>
-
-${jsLinks}
-
-</body>
-</html>`;
-
-  const doc = frame.contentDocument;
-  doc.open();
-  doc.write(html);
-  doc.close();
-}
-
 function downloadJson(file, data) {
-  const blob = new Blob([JSON.stringify(data, null, 2) + "\n"], { type: "application/json;charset=utf-8" });
+  const blob = new Blob(
+    [JSON.stringify(data, null, 2) + "\n"],
+    { type: "application/json;charset=utf-8" }
+  );
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = file;
@@ -331,6 +308,7 @@ function escapeHtml(s) {
     "'": "&#39;",
   }[m]));
 }
+
 function escapeAttr(s) {
   return escapeHtml(s).replace(/`/g, "&#96;");
 }
