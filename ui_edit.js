@@ -55,7 +55,7 @@ function wire(root, state, file, data) {
   const refresh = () => {
     readForm(form, data);
     updateErrors(root, data);
-    updatePreview(root, data);
+    updatePreviewWithCommon(root, data);
   };
 
   form.addEventListener("input", refresh);
