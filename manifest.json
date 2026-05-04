@@ -1,5 +1,11 @@
 {
   "baseUrl": "https://tonpukusan.github.io/blog-parts/products/",
+  "previewCss": [
+    "https://tonpukusan.github.io/blog-parts/style.css"
+  ],
+  "previewJs": [
+    "https://tonpukusan.github.io/blog-parts/common.js"
+  ],
   "files": [
     "34_advancement_bcr-56.json",
     "34_hm_grip2.json",
