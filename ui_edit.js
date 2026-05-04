@@ -10,7 +10,7 @@ import {
   insKattene,
   generateAmazonAffiliateLink,
   generateRakutenAffiliateUrl
-} from "./common.js";
+} from "https://tonpukusan.github.io/blog-parts/common.js";
 
 export function renderEdit(root, state, file) {
   const item = state.cards.find(x => x.file === file);
