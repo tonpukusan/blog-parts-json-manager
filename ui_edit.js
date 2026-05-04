@@ -136,20 +136,22 @@ function wire(root, state, file, data) {
   updatePreview(root, data);
 }
 
-function updatePreview(root, data) {
-  const el = root.querySelector("#preview");
+function updatePreviewWithCommon(root, data) {
+  const el = root.querySelector("#previewArea");
   if (!el) return;
 
   const amazonUrl = generateAmazonAffiliateLink(data.aUrl, "yusatosh-22");
-  const rakutenUrl = data.rUrl ? generateRakutenAffiliateUrl(data.rUrl) : "";
+  const rakutenUrl = data.rUrl
+    ? generateRakutenAffiliateUrl(data.rUrl)
+    : "";
 
   el.innerHTML = insKattene(
-    data.title || "",
-    data.imgUrl || "",
-    data.imgWidth || 200,
-    amazonUrl || "",
+    data.title,
+    data.imgUrl,
+    data.imgWidth,
+    amazonUrl,
     data.yUrl || "",
-    rakutenUrl || "",
+    rakutenUrl,
     data.btnStyle || "__three",
     data.desc || ""
   );
@@ -249,7 +251,7 @@ function buildFormHtml(file, data, notes = [], isNew = false) {
 
     <div class="preview-wrap">
       <div class="preview-title">プレビュー</div>
-      <div id="preview"></div>
+      <div id="previewArea"></div>
     </div>
   `;
 }
