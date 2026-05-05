@@ -6,11 +6,6 @@ import { copyText } from "./clipboard.js";
 import { isSupported as fsSupported, saveJsonToProducts } from "./fs_access.js";
 
 // ★ 追加（common.jsから）
-import {
-  insKattene,
-  generateAmazonAffiliateLink,
-  generateRakutenAffiliateUrl
-} from "../blog-parts/common.js";
 
 export function renderEdit(root, state, file) {
   const item = state.cards.find(x => x.file === file);
