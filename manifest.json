@@ -1,11 +1,5 @@
 {
   "baseUrl": "https://tonpukusan.github.io/blog-parts/products/",
-  "previewCss": [
-    "https://tonpukusan.github.io/blog-parts/style.css"
-  ],
-  "previewJs": [
-    "https://tonpukusan.github.io/blog-parts/common.js"
-  ],
   "files": [
     "34_advancement_bcr-56.json",
     "34_hm_grip2.json",
@@ -127,6 +121,7 @@
     "evergreen_e.g.spooledge_guard.json",
     "evergreen_ironmarvie40.json",
     "evergreen_marvie50.json",
+    "fazee_nylon_glove_holder.json",
     "fcs_pod_x_sharkbanz.json",
     "fimo_pliers_ver2.json",
     "fishing_fighters_tetsuwan_super_sus_quick_clip_swibel_28s.json",
